@@ -5,7 +5,6 @@ We first access a single field in that manner. Then we call a method knowing onl
 The techniques used here are:
 
 - TASTy Reflect for typed AST tree manipulation
-- Unlifting a literal from an expression to a value
 - Learning which exactly trees to construct via `println(Term.of('{ ... }))` technique
 - Working with the TASTy Reflection API, learning how exactly to construct the TASTy nodes
 - Widening a TASTy type to prevent it from been to narrow

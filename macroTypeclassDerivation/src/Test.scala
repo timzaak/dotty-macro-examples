@@ -5,15 +5,15 @@ case class Person(name: String, address: String, age: Int) extends People
 case class Couple(person1: Person, person2: Person) extends People
 
 object Implicits extends LowPrioImplcits:
-  given Show[String]:
+  given Show[String] with
     def show(t: String) = t
 
-  given Show[Int]:
+  given Show[Int] with
     def show(t: Int) = t.toString
 end Implicits
 
 trait LowPrioImplcits:
-  inline given [T] as Show[T] = deriveShow[T]
+  inline given [T]:Show[T] = deriveShow[T]
 end LowPrioImplcits
 
 import Implicits.given

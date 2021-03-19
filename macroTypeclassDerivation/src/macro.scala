@@ -9,14 +9,14 @@ def deriveShowImpl[T](using quotes: Quotes, tpe: Type[T]): Expr[Show[T]] =
   val tpeSym = TypeTree.of[T].symbol
   if tpeSym.flags.is(Flags.Case) then deriveCaseClassShow[T]
   else if tpeSym.flags.is(Flags.Trait & Flags.Sealed) then deriveTraitShow[T]
-  else throw RuntimeException(s"Unsupported combination of flags: ${tpeSym.flags.show}")
+  else report.throwError(s"Unsupported combination of flags: ${tpeSym.flags.show}")
 
 def deriveTraitShow[T](using quotes: Quotes, tpe: Type[T]): Expr[Show[T]] =
   import quotes.reflect._
   val children: List[Symbol] = TypeTree.of[T].symbol.children
 
   def showBody(t: Expr[T]): Expr[String] =
-    val selector: Term = Term.of(t)
+    val selector: Term = t.asTerm
     val ifBranches: List[(Term, Term)] = children.map { sym =>
       val childTpe: TypeTree = TypeIdent(sym)
       val condition: Term = TypeApply(
@@ -50,7 +50,7 @@ def deriveCaseClassShow[T](using quotes: Quotes, tpe: Type[T]): Expr[Show[T]] =
     '{s"${${Expr(fieldName)}}: ${${strRepr}}"}  // summon[Show[$fieldTpe]].show(v.field)
 
   def showBody(v: Expr[T]): Expr[String] =
-    val vTerm: Term = Term.of(v)
+    val vTerm: Term = v.asTerm
     val valuesExprs: List[Expr[String]] = fields.map(showField(vTerm, _))
     val exprOfList: Expr[List[String]] = Expr.ofList(valuesExprs)
     '{$exprOfList.mkString(", ")}
@@ -70,6 +70,7 @@ def lookupShowFor(using quotes: Quotes)(t: quotes.reflect.TypeRepr): quotes.refl
   val tclTpe = showTpe.appliedTo(t)
   Implicits.search(tclTpe) match
     case res: ImplicitSearchSuccess => res.tree
+    case _ => report.throwError(s"could not find implicit of Show[${t.show}]")
 
 /** Composes the tree: $tcl.show($arg) */
 def applyShow(using quotes: Quotes)(tcl: quotes.reflect.Term, arg: quotes.reflect.Term): quotes.reflect.Term =
@@ -89,5 +90,5 @@ def mkIfStatement(using quotes: Quotes)(
   branches match
     case (p1, a1) :: xs =>
       If(p1, a1, mkIfStatement(xs))
-    case Nil => Term.of('{throw RuntimeException("Unhandled condition encountered " +
-      "during Show derivation")})
+    case Nil => '{throw RuntimeException("Unhandled condition encountered " +
+      "during Show derivation")}.asTerm
